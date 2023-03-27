@@ -1,0 +1,88 @@
+---
+title: 'Final Project: Predicting NBA Draft Picks Using College Statistics'
+author:
+  - STOR 320.01 Group 3  
+  -           
+  - Antonio Arias, Bruno Francischine, Thomas Gessner, Kevin Sullivan and Lucas Thomae
+date: '2022-11-21'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\pagebreak  
+  
+**INTRODUCTION**  
+\hfill\break
+Sports are unique to other research settings in the sense that there is a complete and overwhelming collection of data for participants. Sports are also unique to other research settings because sports are fun. Different sports leagues possess millions of dedicated and invested fans, and this is no different for college basketball, a team sport with very popular players and programs that have been the basis for discussion, analysis, and debate since the sport’s conception. Recently, the development of the "analytics movement” in sports, a push by some programs to utilize data analysis in order to win more games, has led to even more discussion, analysis and debate on the effectiveness of advanced analytics and the analytics movement. As a group of students that go to a university with a storied and highly successful men’s college basketball program, there is great appeal in attempting to analyze over a decade’s worth of men’s college basketball statistics, and attempt to ask and answer questions that could potentially help us, or other fans of the sport, determine the importance of certain statistics in the sport.  Our analysis will focus on two questions, one with a focus on the individual player side of basketball and the other on the team side of basketball.
+
+There is great interest in college basketball, and a lot of that interest is tied to professional basketball, because the best, or potentially best, players in college basketball are drafted into the National Basketball Association each year. However there is no definitive "best" method for drafting college players. What should an NBA team look for in its prospective draft picks?
+
+Ambiguity is not desirable, and that is why we decided to center our questions around seeing if **1)** there are any statistics that can be predictive in determining if a player is drafted, and **2)** if there is a broader association between teams that have a lot of drafted players, and their most distinct statistics. This analysis could be useful for many, because the data we are working from is very accessible, and it could help in answering questions related to the effectiveness of studying analytics in sports. 
+
+\hfill\break
+**DATA**  
+\hfill\break
+Before looking for any data to use as the basis of this assignment, we decided that we were going to focus on men’s college basketball, influenced by our enjoyment of the sport, the success of our school team, and the relatively new-found focus on analytics in the broader sports community. Luckily, thanks to the work of University of Southern California student Aditya Kumar, we have access to simple and advanced stats on over 4500 division one college basketball players from 2009 to 2021, which was scraped from *sports-reference.com*.
+
+[TABLE]
+
+The key variable in this dataset is `pick`, which we have turned into a binary variable that states whether a player was selected in the NBA Draft or not. Becoming an NBA Draft pick is extremely rare — only 627 of 25,719 distinct players in the data were drafted.
+
+[PIE CHART]
+
+The main data set included 65 different variables, both categorical and numerical, and a whopping 61,061 observations. Since the data set contained such a large amount of variables and observations, we wanted to view the data set in its totality, and then from there make a valued determination on what variables to utilize in our analysis. The first problem we encountered while cleaning the data was the presence of duplicate players in the data set. For our purposes, we only kept the most recent season that each player appeared in the data set. We then removed all variables in the data set that were not statistics, since we wanted to create predictive models based solely on on-court performance. Therefore, variables such as name, year, school and recruiting ranking were removed from the data.
+
+In an effort to reduce redundancy and collinearity, we removed certain variables that were just the summation of other statistics. For example, we removed total rebounds and only kept offensive rebounds and defensive rebounds. On the other hand, there were percentage statistics that were just the percentages of two statistics in the data set. In most cases, we would keep the percentage statistic because its improved statistical value over the statistics used to create it. We chose two point percentage (twoP_per) over two points made.
+
+In order to answer the questions we posed, we must also define "simple statistics" versus "advanced statistics". We considered a variable to be a simple statistic if it was either a counting statistic or a percentage of a counting statistic. Examples of simple statistics are points per game (points), assists per game (apg), blocks per game (bpg) and free throw percentage (FT_per).
+
+We considered all other statistics to be advanced statistics. These advanced statistics are calculated by more complex equations and tend to use weighted averages. Examples of advanced statictics include effective field goal percentage (eFG), which takes the weighted average of two point percentage and three point percentage, or points over replacement per adjusted game (porpag), which calculates the points a player scores over a hypothetical “replacement player”.
+
+When starting our analysis, we wanted to make sure the data we used was as effective as possible for answering our questions, and that is why it was so important to make these determinations on our data, so that our results could be understandable, clean and, above all else, accurate. Separating simple and advanced statistics allows us to avoid the problems of collinearity and redundancy while still examining valuable data that provides a full picture for our outcomes. 
+ 
+\hfill\break
+**RESULTS**  
+\hfill\break
+**Question 1**
+
+*Which simple statistics are the most statistically significant in predicting whether or not a player was drafted into the NBA?*
+
+To try and identify how an individuals’ college statistics correlate to NBA Draft picks, we created three models, each with the purpose of predicting whether an individual in our dataset was drafted based on the statistics of their final year in college. Every model attempted to predict the pick variable, which is a binary variable with a value of 1 if that player was drafted to the NBA and a value of 0 if they were not. Our first model was built from a pool of covariates deemed “simple statistics.” These statistics are those that even casual fans of basketball may recognize, including points, assists, blocks, free throw percentage, etc. Our second model was built from a pool of covariates deemed “advanced statistics.” These covariates are specialized statistics that track more specific occurrences of a game, including effective field goal percentage (eFG), defensive rating (drtg), etc. Our third model was created out of a pool of all covariates and is a combination of simple and advanced statistics.
+
+In order to select a “best” model out of each pool of predictors, we used the `stepAIC` function from the `MASS` package. This function creates a “best” model by performing stepwise regression starting from a full model of predictors. The `stepAIC` function removes predictors one at a time until a minimum Akaike Information Criteria value (AIC) is reached. We chose to use this method because it creates a model that is generally simpler while not losing much accuracy. This method is also effective at reducing the problem of multicollinearity which is a potentially serious problem when analyzing sports data, as many of the statistics are built from some combination of one another. After applying the `stepAIC` function to find a “best model” for each of our three pools of covariates, we manually went through and removed any predictors that were not significant at the alpha = 0.05 level one at a time. Our three models are given in Figure 1.1.
+
+![hello world](~/Documents/2022 Fall/STOR 320/Final Project/Final Paper/images/Models.png)
+
+After we created our three models, we split our data into a training and test set, with the training set being built from a random 65% of our data and our test set built from a random 35%. We did this in order to test how well our models predicted whether or not a player was drafted. To do this, we used the machine learning technique of classification. After splitting the data, we used the `predict` function in R and predicted on our test set using each of our three models. We then created three confusion matrices in order to analyze how accurate our models were.
+
+What we found was very interesting. All three models performed very similarly, with each being very good at predicting players who were not drafted. However, all of the models struggled with correctly predicting the players who were drafted. None of our models were able to correctly predict when a player was drafted more than 70% of the time, with the “simple” model being by far the worst, predicting a player being drafted correctly only 39.6% of the time (Figure 1.2). This shows a potential limitation to our analysis. On the one hand, only about 814 out of the 61,061 players who have played Division I college basketball from 2009-2021 have been drafted, so it makes sense that our models would not predict a large number of players being drafted. That being said however, such a high rate of false negatives warrants further consideration of potential lurking variables.
+
+\hfill\break
+**Question 2**
+
+*Which college programs produced the most draft picks? Which team statistics made those programs stand out?*
+
+The second question we intend to answer brings another layer of data wrangling and modification in order to properly move forward. In particular, we need to find a way to scale the statistics to the team level. To do this, we utilized the `mp` variable in the spreadsheet to find the total number of points, assists, rebounds, etc. that a player scored throughout the entire season (the data set contains proportional data for some statistics). Then, we used the `group_by` function to calculate total points, total assists, etc., for an entire season. In a similar way, we used the `group_by` function again to get total points, total assists, etc., for an entire team from 2009-2021. From here, we were able to proportionalize the statistics to get per game stats for these respective teams. The process to obtain the total number of picks was similar, implementing techniques to count the total number of picks a team produced for a specific year, and using the `group_by` function to combine.
+
+By the nature of the data we are given, it becomes difficult to handle most of the statistics seen in the previous question, as we would be making too many assumptions about the data that we simply cannot confirm. Therefore, we will be analyzing eight simple statistics and their statistical significance in getting draft picks. These eight statistics are: points per game (PPG), assists per game (APG), rebounds per game (RPG), steals per game (SPG), free throw percentage (FTPer), two point percentage (TwoPer), and three point percentage (TPG). We noticed that the `totalPicks` column features a right-skewed distribution across teams, so in order to combat this, we are instead comparing these eight statistics against the natural log of the total draft picks a team produced from 2009-2021, named ‘AdjPicks’ in figure 2.1. This effect helps fix the skewed distribution of `totalPicks`, as well as normalizing the data (seen in the diagnostic plots associated with the linear model).
+
+The first part of question 2 is a simple one: which college produced the most picks from 2009 to 2021? Figure 2.1 is a table that sorts the teams by total number of picks produced, with the other statistics used to answer the next part of question 2. In summary, The University of Kentucky produced the most draft picks over that time span (43), followed by Duke University (32) and The University of North Carolina at Chapel Hill (21). There is one surprise here. Each team that won a NCAA Championship in this time frame is here, except for Villanova University (2016, 2018). We suspect that Villanova produced fewer draft picks because its men's basketball program may focus more developing four-year players than attracting NBA-ready recruits.
+
+Next, we'd like to investigate which team statistics made these particular programs stand out. We’ve taken two routes to answer this one — The first is to see which of the statistics is the most correlated to the adjusted picks (highest r score), and the second one was to create a linear model that predicts the adjusted picks based off of the eight previously defined statistics, and refining the model using backwards selection and collinear tests to derive an accurate model, with significant statistics. Both routes point to the same statistic: `BPG`. `BPG` held the highest correlation to adjustedPicks (.61), and even from the initial linear model, the p-significance value of `BPG` was less than 2^-16. Other statistics that had a p-significance of less than .01 were two-point percentage and rebounds per game. Figure 2.2 highlights a linear regression plot that compares adjusted picks with blocks per game.
+
+Figure 2.1: These are the college basketball teams that have produced more than 10 draft picks from 2009-2021, with other associated statistics that we are using in the linear model.
+
+Figure 2.2: Scatter plot of each team’s adjusted picks compared to their blocks per game from 2009-2021, with a regression line.  
+\hfill\break
+**CONCLUSION**  
+\hfill\break
+Our statistical analysis simplifies a highly complex game. While it is true that what a player does on the court is critical to whether or not they get drafted, there are countless lurking variables that directly impact our analysis. While it is true that certain statistics such as points or steals may lead a player to get drafted, what is almost equally if not more important may be physical factors like height, wingspan or vertical jump. Intangible factors like game intelligence and demeanor also factor in to whether or not a player gets drafted. These things are outside of the scope of this analysis and further research into this question may wish to consider some of these inherently non quantitative characteristics. While we have found certain combinations of predictors that are statistically significant at predicting whether or not a player was drafted, our models are far better at predicting whether a player was not drafted than they are at predicting if a player was drafted. One result is absolutely clear from our analysis, there is no magic formula to get drafted.
+
+Furthermore, our analysis of men's college basketball programs and their draft picks produced unsurprising results — the most historically dominant programs sent the most players to the NBA. It was interesting to see blocks as one of the most significant predictors of a team's total number of draft picks, and this also points to previously mentioned variables that did not appear in the data set, like height. Another confounding factor this points toward is recruiting. Schools that are historically more successful with recruiting tend to recruit bigger, more athletic players who can produce more blocks, and these kinds of players are generally more likely to be picked over players who do not have the same raw athleticism.
+
+Based on our findings, we can definitively say that it is extremely difficult, perhaps even unreasonable, to try and predict NBA draft picks based purely on statistics at the college level. For one, NBA teams draft players for their potential, meaning that players with impressive numbers in college may not get picked in the draft at all, whether it be because of their age, height or level of competition. This could explain why a five-foot-nine, 22-year-old Chris Clemons — the highest scorer in the data set with 30.1 points per game — was not selected in the 2019 NBA Draft. In fact, our model did predict Clemons would be drafted, showcasing the shortcomings of our method.
+
+It was a fun experiment to try and predict NBA draft picks based purely off of on-court performance, but the numbers clearly show that more than that goes through the minds of team executives on draft night. Future researchers who may want to build a similar model would surely include other factors including physical attributes and the school that a player attends. Even trickier though, is factoring in those intangible attributes that simply cannot be quantified, at least not yet. As the sports personality Bill Simmons once said, "That's the thing about basketball — you don't play games on paper."
+

@@ -1,0 +1,826 @@
+---
+title: "Exploratory Data Analysis: College Basketball Statistics 2009-2019"
+author: "Lucas Thomae, Thomas Gessner, Antonio Arias, Bruno Francischine and Kevin Sullivan"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: html_document
+---
+
+```{r setup, include=TRUE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(knitr)
+```
+
+```{r}
+b_dat = read_csv("CollegeBasketBallPlayers2009-2021.csv")
+head(b_dat, 5)
+```
+
+### What statistic out of points, rebounds, assists, blocks and steals has the highest correlation with being drafted?
+
+```{r}
+library(corrplot)
+
+# Creating dataframe of desired variables
+
+Statistics <- select(b_dat, pick, pts, treb, ast, blk, stl)
+
+# Corrplot removing NA's for pick variable
+
+corrplot(cor(Statistics[complete.cases(Statistics[,1:6]),]), type = "upper")
+```
+
+Based on this plot, none of the statistics in question have a strong correlation with the variable "picks". The statistic with the highest correlation is #steals. It is important to notice however that steals are highly correlated with both points and assists. While the impact this has on the answer to this #question is not really known, there may be other factors that impact why players with a lot of steals tend to get drafted at a higher rate.
+
+### How do the draft prospects of players with an eFG of greater than 50 percent compare to players with an eFG less than 50 percent?
+
+```{r}
+players_50_percent = filter(b_dat, eFG < 50 & mp > 0 )
+
+players_50_percent_distinct = players_50_percent %>% distinct(player_name, .keep_all= TRUE)
+
+players_50_percent_distinct
+```
+
+Now that I have created an appropriate dataset, I will create a new dataset of players from the "players_50_percent" that have been drafted (pick != 0).
+
+```{r}
+players_under_50_drafted = filter(players_50_percent_distinct, pick != 0) 
+  
+
+players_under_50_drafted_compact = select(players_under_50_drafted, player_name, team, GP, eFG, pick)
+
+
+kable(head(players_under_50_drafted_compact))
+```
+
+First I will filter players who have an effective field goal percentage of less than 50%, and then I will remove players who have played zero minutes as they might affect the analysis. I will also remove any duplicate players, since any player who played more than one year in college will have more than one corresponding observation. If a player was drafted, their corresponding pick number shows up in all of their respective observations.
+
+```{r}
+players_under_50_percent = filter(b_dat, eFG < 50 & mp > 0 )
+
+players_50_percent_distinct = players_under_50_percent %>% distinct(player_name, .keep_all= TRUE)
+
+players_50_percent_distinct
+```
+
+Now that I have created an appropriate dataset, I will create a new dataset of players from the "players_50_percent" that have been drafted (pick != 0).
+
+```{r}
+players_under_50_drafted = filter(players_50_percent_distinct, pick != 0) 
+  
+
+players_under_50_drafted_compact = select(players_under_50_drafted, player_name, team, GP, eFG, pick)
+
+
+kable(head(players_under_50_drafted_compact))
+
+```
+
+There are 276 players who played college basketball from 2009-2021 who have had an effective field goal percentage of less than 50% and have been drafted in the NBA draft. This means that 1.35% (calculated by 276/20,328) of players who have an effective field goal percentage of less than 50% have been drafted between 2009-2021.
+
+Now I will look at the players who had an eFG of over 50% and see how many were drafted.
+
+```{r}
+# Players who had eFG > 50%
+
+players_over_50_percent = filter(b_dat, eFG > 50 & mp > 0 )
+
+players_over_50_percent_distinct = players_over_50_percent %>% distinct(player_name, .keep_all= TRUE)
+
+head(players_over_50_percent_distinct)
+
+
+# Players who had eFG > 50% and were drafted
+
+players_over_50_drafted = filter(players_over_50_percent_distinct, pick != 0) 
+  
+
+players_over_50_drafted_compact = select(players_over_50_drafted, player_name, team, GP, eFG, pick)
+
+
+kable(head(players_over_50_drafted_compact))
+
+```
+
+There are 538 players who played college basketball from 2009-2021 who have had an effective field goal percentage of greater than 50% and have been drafted in the NBA draft. This means that 4.008% (calculated by 538/13423) of players who have an effective field goal percentage of greater than 50% have been drafted between 2009-2021.
+
+```{r}
+# Create Pie Chart
+under_50_percentage = (nrow(players_under_50_drafted_compact))
+
+over_50_percentage = (nrow(players_over_50_drafted_compact))
+
+slices <- c(under_50_percentage, over_50_percentage)
+lbls <- c("eFG under 50%", "eFG over 50%")
+pie(slices, labels = lbls, main="Percent of Players Drafted to the NBA based on eFG")
+
+```
+
+### Which Conference led in Ortg, Drtg, Adrtg, and bpm in 2009?
+
+```{r}
+sheet_2009 = filter(b_dat, year == 2009)
+conference_sheet_2009 = group_by(sheet_2009, conf)
+conference_stats = conference_sheet_2009 %>%
+  summarise(ORTG = mean(Ortg), DRTG = mean(drtg), ADRTG = mean(adrtg), BPM = mean(bpm)) 
+
+kable(head(arrange(conference_stats, desc(ORTG))))
+kable(head(arrange(conference_stats, DRTG)))
+kable(head(arrange(conference_stats, ADRTG)))
+kable(head(arrange(conference_stats, desc(BPM))))
+```
+
+In the 2009 NCAA basketball season, The Big XII led in average ORTG, the Patriot league led in average DRTG, the Big 10 led in average ADRTG, and the Big XII led in average BPM.
+
+### Which conference had the highest effective field goal percentage in 2018?
+
+```{r}
+eFG_conf <- b_dat %>% 
+  filter(year == 2018) %>%
+  group_by(conf) %>%
+  summarise(eFG = mean(eFG)) %>%
+  arrange(-eFG)
+
+kable(head(eFG_conf))
+```
+
+In 2018, the America East Conference had the highest effective field goal percentage with 48.46%.
+
+### What will the correlation between usage rate and year be, charting four year players?
+
+```{r}
+
+four_year_players <- b_dat %>%
+  select(pid, player_name, team, yr) %>%
+  group_by(pid) %>%
+  count(pid) %>%
+  filter(n==4) %>%
+  inner_join(b_dat, by=c("pid")) %>%
+  select(pid, player_name, team, yr)
+#these are players that appear in the data set four times ^
+
+four_year_players <- four_year_players %>%
+  group_by(pid, team) %>%
+  count(pid, team) %>%
+  filter(n==4) %>%
+  inner_join(b_dat, by=c("pid", "team")) %>%
+  select(pid, player_name, team, yr)
+#these are players that played all four years with the same team ^
+
+four_year_players <- four_year_players %>%
+  group_by(pid, yr) %>%
+  count(pid, yr) %>%
+  pivot_wider(names_from = "yr", values_from = "n") %>%
+  filter(Fr == 1, So == 1, Jr == 1, Sr == 1) %>%
+  select(pid)
+#these are players whose four years are traditionally labeled as freshman through senior
+
+four_year_usg <- four_year_players %>%
+  inner_join(b_dat, by=c("pid")) %>%
+  select(pid, player_name, team, yr, usg) %>%
+  pivot_wider(names_from = "yr", values_from = "usg") %>%
+  ungroup()
+
+#this is a table of every four year player and their usage stats freshman through senior year
+
+means<- four_year_usg %>%
+  select(4:7) %>%
+  colMeans(na.rm = TRUE)
+
+
+library(tibble)
+means <- means %>% as.data.frame() %>%
+  tibble::rownames_to_column("Yr") %>%
+  rename("usg" = 2)
+#this code converts the named list into a data frame with the average usg rates
+
+#On average, four-year college players should expect their usage rate to grow from 17.40 freshman year to 19.23 senior year.
+
+#Plotting usg data
+
+x <- factor(means$Yr, levels = c("Fr", "So", "Jr", "Sr"))
+y <- means$usg
+
+plot(x, y, xlab="Year in School", ylab="Mean Usage Rate")
+
+#Running significance test for usg data
+fr_usg <- four_year_usg$Fr
+so_usg <- four_year_usg$So
+jr_usg <- four_year_usg$Jr
+sr_usg <- four_year_usg$Sr
+
+t.test(sr_usg, fr_usg, alternative = "two.sided", var.equal = FALSE)
+t.test(so_usg, fr_usg, alternative = "two.sided", var.equal = FALSE)
+t.test(jr_usg, so_usg, alternative = "two.sided", var.equal = FALSE)
+
+#These two-sided difference of means tests show that there is a significant difference between the mean usg rates of freshmen and senior players (test 1). There #is also a significant difference between freshmen and sophomores (test 2) and sophomores and juniors (test 3).
+
+```
+
+On average, four-year college players should expect their usage rate to grow from 17.40 freshman year to 19.23 senior year.
+
+### Which player scored the most points in their college career out of all players from 2009-2021, and were they drafted in the first round?
+
+```{r}
+
+b_dat=mutate(b_dat,totalpts=pts*GP)
+b_dat=mutate(b_dat, totalptsrnd=round(totalpts,0))
+Boypointstotal= b_dat %>%
+  group_by(player_name, team, pick) %>%
+  summarise(TOTALPTS =sum(totalptsrnd))
+kable(head(arrange(Boypointstotal, desc(TOTALPTS))))
+
+```
+
+Doug McDermott was the player with the most career points of any player from 2009-2021, and he was drafted in the first round of the 2014 NBA Draft.
+
+### From 2009 through 2021, how have the median points per game from freshman to senior year changed?
+
+```{r}
+
+library(ggplot2)
+
+b_dat2 <- b_dat[c("pts", "yr", "year")]
+#head(b_dat2)
+
+b_dat3 <- filter(b_dat2, yr == "Fr")
+#head(b_dat3)
+
+bdat6<- group_by(b_dat3, year)
+head(bdat6)
+ 
+Frmean <- bdat6%>%
+  summarise(Median_Years = median(pts, na.rm = TRUE))
+
+head(Frmean, 13)
+
+ggplot(data=Frmean, aes(x= year, y= Median_Years)) +
+  geom_bar(stat = "identity", fill = "steelblue")+
+   geom_text(aes(label = Median_Years), vjust = 2, size = 3)+
+  labs(title="FRESHMAN",
+        x ="YEARS", y = "MEDIAN PTS")
+
+# Choosing to directly analyze freshman median points in order to see their direct impact on the game in regards to points and whether or not 
+# over a span of 13 yrs if we have seen a greater presence of freshman in college basketball.
+
+
+#Sophomores
+b2 <- b_dat[c("pts", "yr", "year")]
+#head(b_dat2)
+
+b3 <- filter(b2, yr == "So")
+#head(b_dat3)
+
+b4<- group_by(b3, year)
+
+ 
+Somean <- b4%>%
+  summarise(Median_Years = median(pts, na.rm = TRUE))
+
+
+ggplot(data=Somean, aes(x= year, y= Median_Years)) +
+  geom_bar(stat = "identity", fill = "steelblue")+
+   geom_text(aes(label = Median_Years), vjust = 2, size = 3)+
+  labs(title="SOPHOMORES",
+        x ="YEARS", y = "MEDIAN PTS")
+
+# Juniors
+b5 <- b_dat[c("pts", "yr", "year")]
+#head(b_dat2)
+
+b6 <- filter(b5, yr == "Jr")
+#head(b_dat3)
+
+b7<- group_by(b6, year)
+head(bdat6)
+ 
+Jrmean <- b7%>%
+  summarise(Median_Years = median(pts, na.rm = TRUE))
+
+head(Jrmean, 13)
+
+ggplot(data=Jrmean, aes(x= year, y= Median_Years)) +
+  geom_bar(stat = "identity", fill = "steelblue")+
+   geom_text(aes(label = Median_Years), vjust = 2, size = 3)+
+  labs(title="JUNIORS",
+        x ="YEARS", y = "MEDIAN PTS")
+
+
+
+#Seniors
+b8 <- b_dat[c("pts", "yr", "year")]
+#head(b_dat2)
+
+b9 <- filter(b8, yr == "Sr")
+#head(b_dat3)
+
+b9<- group_by(b9, year)
+head(bdat6)
+ 
+Srmean <- b9%>%
+  summarise(Median_Years = median(pts, na.rm = TRUE))
+
+head(Srmean, 13)
+
+ggplot(data=Srmean, aes(x= year, y= Median_Years)) +
+  geom_bar(stat = "identity", fill = "steelblue")+
+   geom_text(aes(label = Median_Years), vjust = 2, size = 3)+
+  labs(title="SENIORS",
+        x ="YEARS", y = "MEDIAN PTS")
+
+# from this data we are able to see that as the player progresses from year to year they their impact on this game in regards to points increases. 
+
+```
+
+### How did the 2009 UNC team's effective field goal percentage compare to the 2017 UNC team's effective field goal percentage?
+
+```{r}
+#2009 team efg, highest efg
+b_dat10 <- b_dat[c("eFG", "team", "year")]
+#head(b_dat10)
+
+b_dat11 <- filter(b_dat10, team == "North Carolina")
+#head(b_dat11)
+
+b_dat12 <- filter(b_dat11, year== "2009")
+#head(b_dat12)
+mean09<- mean(b_dat12$eFG)
+mean9<- b_dat12$eFG
+head(mean9)
+
+
+
+#2017 team efg, championship year
+b_dat13 <- b_dat[c("eFG", "team", "year")]
+#head(b_dat10)
+
+b_dat14 <- filter(b_dat13, team == "North Carolina")
+#head(b_dat14)
+
+b_dat15 <- filter(b_dat14, year== "2017")
+#head(b_dat15)
+
+mean17<- mean(b_dat15$eFG)
+mean7<- b_dat15$eFG
+
+
+MEANS<-c(mean7, mean9)
+plot(MEANS, type="o", col="red")
+
+
+
+#Given the two sample t-test we are able to take note that there is no statistical significance between the two years since our p-val was great than .05. 
+t.test(mean9 , mean7, alternative = "two.sided", var.equal = FALSE)
+
+
+
+```
+
+# Follow-up Questions
+
+### New Questions Based Off Initial Investigation
+
+-   Q1: Which college had the most players over the 13 year span? Which college had the least number of players over the 13 year span & what was the distribution?
+
+-   Q2: We found in our above analysis that players with an effective field goal percentage of less than 50% have a very hard time being drafted (only about 1% have been drafted). What are some other factors that may "redeem" these players and lead to them being drafted?
+
+-   Q3: By examining statistics such as three point shots attempted, offensive rebounds, assists, etc., can we make an inference about the play style of certain conferences, i.e. does the ACC tend to play at a fast pace, or does the BIG10 rely heavily on the three point shot, and is there a correlation between this determined play style and the number of players drafted to the NBA who play in these systems?
+
+-   Q4: Which conference do you have to do the least in to get drafted, and which do you need to do the most to get drafted?
+
+### Investigation of Follow-up Questions
+
+GIVE WHAT 2 QUESTIONS YOU ATTEMPTED TO INVESTIGATE FURTHER IN COMPLETE SENTENCES (*Example:* Our group decided to investigate Q2 and Q4 in further detail.)
+
+# Our group has decided to further investigate questions 1 and 3.
+
+SHOW AT LEAST 2 TABLES OR FIGURES BELOW THAT EXPLORE ANSWERS FOR THE QUESTIONS YOU ARE INVESTIGATING FURTHER.
+
+```{r}
+#Q1:
+  
+players_per_team = group_by(b_dat, team, player_name)
+players = count(players_per_team, team)
+players = select(players, c(1,2))
+number_per_team = group_by(players, team)
+number_per_team = summarise(number_per_team, count = n())
+number_per_team
+
+kable(head(arrange(number_per_team, desc(count))))
+kable(head(arrange(number_per_team, count)))
+ggplot(data = number_per_team) +
+  geom_histogram(mapping = aes(x = count), binwidth = 2)
+```
+
+Mississippi Valley State is the school with the most players over the last 13 years, while UC San Diego is the school with the least. The data seems to be left-skewed, but this due to the fact that some schools don't have data for some of the years, since they were not Division I NCAA schools for basketball. Removing these outliers, the distribution of the data seems to be fairly even without much skewness. .
+
+```{r}
+#Q3:
+# Data frame of all players drafted
+
+drafted = filter(b_dat, is.na(pick) == FALSE)
+
+# Remove repeat names
+
+drafted_distinct = drafted %>% distinct(player_name, .keep_all= TRUE)
+
+
+# Count picks by conference
+
+picks_by_conference = count(drafted_distinct, conf)
+
+
+# Seven conferences with most total draft picks
+
+ggplot(picks_by_conference) +
+  geom_col(mapping = aes(x = n, y = conf, fill = conf))
+  
+```
+
+The six conferences with the highest number of draft picks are the ACC, BIG10, Big 12, Big East, PAC 12, and SEC. For each conference, we will compute the conference wide totals for the following statistics: three point shots attempted, three point percentage, offensive rebounds, free throws attempted, free throws made, blocks per game, and steals per game. We will then compare these totals with those from the other conferences to try and infer certain play styles for these conferences. For percentage based statistics I will compute the median.
+
+```{r}
+# ACC Analysis
+conference_breakdown = select(b_dat, conf, team, player_name, twoPM, twoPA, TPA, TPM, TP_per, blk_per, stl_per, FTA, FTM, FT_per, oreb, dreb, ast, stl, blk, pts)
+
+ACC_breakdown = filter(conference_breakdown, conf == "ACC")
+
+ACC_breakdown
+
+# Total Shots Attempted
+
+ACC_TSA = sum(ACC_breakdown$twoPA + ACC_breakdown$TPA)
+
+# Three point shots attempted
+
+ACC_tpa_total = sum(ACC_breakdown$TPA)
+
+ACC_tpa_total
+
+# Reliance on three point shot 
+
+ACC_reliance = ACC_tpa_total / ACC_TSA
+
+ACC_reliance * 100
+
+# Three point percentage
+
+ACC_TPper_total = median(ACC_breakdown$TP_per)
+
+ACC_TPper_total * 100
+
+# Offensive rebounds
+
+ACC_oreb_total = sum(ACC_breakdown$oreb)
+
+ACC_oreb_total
+
+# Free throws attempted
+
+ACC_FTA_total = sum(ACC_breakdown$FTA)
+
+ACC_FTA_total
+
+# Free throws made
+
+ACC_FTper_total = median(ACC_breakdown$FT_per)
+
+ACC_FTper_total * 100
+
+# Blocks per game
+
+ACC_BLKper_total = median(ACC_breakdown$blk_per)
+
+ACC_BLKper_total 
+
+# Steals per game
+
+ACC_STLper_total = median(ACC_breakdown$stl_per)
+
+ACC_STLper_total 
+
+```
+
+```{r}
+# BIG10 Analysis
+
+# Create desired data frame
+
+B10_breakdown = filter(conference_breakdown, conf == "B10")
+
+
+# Total Shots Attempted
+
+B10_TSA = sum(B10_breakdown$twoPA + B10_breakdown$TPA)
+
+# Three point shots attempted
+
+B10_tpa_total = sum(B10_breakdown$TPA)
+
+B10_tpa_total
+
+# Reliance on three point shot 
+
+B10_reliance = B10_tpa_total / B10_TSA
+
+B10_reliance * 100
+
+# Three point percentage
+
+B10_TPper_total = median(B10_breakdown$TP_per)
+
+B10_TPper_total * 100
+
+# Offensive rebounds
+
+B10_oreb_total = sum(B10_breakdown$oreb, na.rm = TRUE)
+
+B10_oreb_total
+
+# Free throws attempted
+
+B10_FTA_total = sum(B10_breakdown$FTA)
+
+B10_FTA_total
+
+# Free throws made
+
+B10_FTper_total = median(B10_breakdown$FT_per)
+
+B10_FTper_total * 100
+
+# Blocks per game
+
+B10_BLKper_total = median(B10_breakdown$blk_per)
+
+B10_BLKper_total 
+
+# Steals per game
+
+B10_STLper_total = median(B10_breakdown$stl_per)
+
+B10_STLper_total 
+
+```
+
+```{r}
+# Big 12 Analysis
+
+# Create desired data frame
+
+B12_breakdown = filter(conference_breakdown, conf == "B12")
+
+B12_breakdown
+
+
+# Total Shots Attempted
+
+B12_TSA = sum(B12_breakdown$twoPA + B12_breakdown$TPA)
+
+# Three point shots attempted
+
+B12_tpa_total = sum(B12_breakdown$TPA)
+
+B12_tpa_total
+
+# Reliance on three point shot 
+
+B12_reliance = B12_tpa_total / B12_TSA
+
+B12_reliance * 100
+
+# Three point percentage
+
+B12_TPper_total = median(B12_breakdown$TP_per)
+
+B12_TPper_total * 100
+
+# Offensive rebounds
+
+B12_oreb_total = sum(B12_breakdown$oreb, na.rm = TRUE)
+
+B12_oreb_total
+
+# Free throws attempted
+
+B12_FTA_total = sum(B12_breakdown$FTA)
+
+B12_FTA_total
+
+# Free throws made
+
+B12_FTper_total = median(B12_breakdown$FT_per)
+
+B12_FTper_total * 100
+
+# Blocks per game
+
+B12_BLKper_total = median(B12_breakdown$blk_per)
+
+B12_BLKper_total 
+
+# Steals per game
+
+B12_STLper_total = median(B12_breakdown$stl_per)
+
+B12_STLper_total 
+```
+
+```{r}
+# Big East Analysis
+
+# Create desired data frame
+
+BE_breakdown = filter(conference_breakdown, conf == "BE")
+
+BE_breakdown
+
+
+# Total Shots Attempted
+
+BE_TSA = sum(BE_breakdown$twoPA + BE_breakdown$TPA)
+
+# Three point shots attempted
+
+BE_tpa_total = sum(BE_breakdown$TPA)
+
+BE_tpa_total
+
+# Reliance on three point shot 
+
+BE_reliance = BE_tpa_total / BE_TSA
+
+BE_reliance * 100
+
+# Three point percentage
+
+BE_TPper_total = median(BE_breakdown$TP_per)
+
+BE_TPper_total * 100
+
+# Offensive rebounds
+
+BE_oreb_total = sum(BE_breakdown$oreb, na.rm = TRUE)
+
+B10_oreb_total
+
+# Free throws attempted
+
+BE_FTA_total = sum(BE_breakdown$FTA)
+
+BE_FTA_total
+
+# Free throws made
+
+BE_FTper_total = median(BE_breakdown$FT_per)
+
+BE_FTper_total * 100
+
+# Blocks per game
+
+BE_BLKper_total = median(BE_breakdown$blk_per)
+
+BE_BLKper_total 
+
+# Steals per game
+
+BE_STLper_total = median(BE_breakdown$stl_per)
+
+BE_STLper_total 
+
+```
+
+```{r}
+# PAC 12 Analysis
+
+# Create desired data frame
+
+PAC12_breakdown = filter(conference_breakdown, conf == "P12")
+
+PAC12_breakdown
+
+
+# Total Shots Attempted
+
+PAC12_TSA = sum(PAC12_breakdown$twoPA + PAC12_breakdown$TPA)
+
+# Three point shots attempted
+
+PAC12_tpa_total = sum(PAC12_breakdown$TPA)
+
+PAC12_tpa_total
+
+# Reliance on three point shot 
+
+PAC12_reliance = PAC12_tpa_total / PAC12_TSA
+
+PAC12_reliance * 100
+
+# Three point percentage
+
+PAC12_TPper_total = median(PAC12_breakdown$TP_per)
+
+PAC12_TPper_total * 100
+
+# Offensive rebounds
+
+PAC12_oreb_total = sum(PAC12_breakdown$oreb, na.rm = TRUE)
+
+PAC12_oreb_total
+
+# Free throws attempted
+
+PAC12_FTA_total = sum(PAC12_breakdown$FTA)
+
+PAC12_FTA_total
+
+# Free throws made
+
+PAC12_FTper_total = median(PAC12_breakdown$FT_per)
+
+PAC12_FTper_total * 100
+
+# Blocks per game
+
+PAC12_BLKper_total = median(PAC12_breakdown$blk_per)
+
+PAC12_BLKper_total 
+
+# Steals per game
+
+PAC12_STLper_total = median(PAC12_breakdown$stl_per)
+
+PAC12_STLper_total 
+
+```
+
+```{r}
+# SEC Analysis
+
+# Create desired data frame
+
+SEC_breakdown = filter(conference_breakdown, conf == "SEC")
+
+SEC_breakdown
+
+
+# Total Shots Attempted
+
+SEC_TSA = sum(SEC_breakdown$twoPA + SEC_breakdown$TPA)
+
+# Three point shots attempted
+
+SEC_tpa_total = sum(SEC_breakdown$TPA)
+
+SEC_tpa_total
+
+# Reliance on three point shot 
+
+SEC_reliance = SEC_tpa_total / SEC_TSA
+
+SEC_reliance * 100
+
+# Three point percentage
+
+SEC_TPper_total = median(SEC_breakdown$TP_per)
+
+SEC_TPper_total * 100
+
+# Offensive rebounds
+
+SEC_oreb_total = sum(SEC_breakdown$oreb, na.rm = TRUE)
+
+SEC_oreb_total
+
+# Free throws attempted
+
+SEC_FTA_total = sum(SEC_breakdown$FTA)
+
+SEC_FTA_total
+
+# Free throws made
+
+SEC_FTper_total = median(SEC_breakdown$FT_per)
+
+SEC_FTper_total * 100
+
+# Blocks per game
+
+SEC_BLKper_total = median(SEC_breakdown$blk_per)
+
+SEC_BLKper_total 
+
+# Steals per game
+
+SEC_STLper_total = median(SEC_breakdown$stl_per)
+
+SEC_STLper_total 
+
+```
+
+# Summary
+
+Everyone in the project has had a lot of experience watching our data set unfold by watching college basketball, but we learned a lot from our questions pertaining to our NCAA college basketball data. Our biggest "surprise" was the lack of any true correlation between any counting statistic and draft pick, which goes against conventional wisdom of players excelling in pts, rbds, and ast having a better shot of getting drafted. In addition to that, we learned through our data analysis that the there is not much variance between conferences when it comes to traditional and advanced analytics, likely because most of the games played by these teams are within a conference. Also, traditional ideas about senior players in comparison to freshman players were expressed in the EDA, like a clear increase in usage rate as four year players went from freshmen to seniors. Out of everything we asked, the most useful initial questions were the question relating to players drafted with a eFG below 50 percent, because it leads us to search for other correlation that could potentially "redeem" these poor shooters, and the other effective question being which conference had the highest eFG in 2018, not because the question was very expansive, but because it led to us asking about the importance and significance of conferences, since there was not much variance between them, leading us to now ask about the correlation between conferences and draft pick status to see if there is anything correlative from conferences that has an effect on player "success".
+
+One of the interesting things about college basketball that doesn't exist with many other sports is the variety seen in multiple aspects of the sport, particularly in the rosters themselves. There can be a differing number of players that represent each team each season, and these players can last from one, all the way up to four years on a team. This was evident in one analysis question we looked at, how many players a team has registered over the last 13 years. To my initial surprise, there was a left-skewed distribution holistically visualizing the data. However, doing more investigation, it seems like the skewness is caused by teams who only have had a DI basketball team for a few years, so their data is technically incomplete. Removing the outliers that fall into this category, the data overall seems fairly normal. As well, many of the schools that have registered many players are typically schools with a weaker basketball culture, which runs against the notion that bigger basketball schools need more players to replace older ones who leave early. Another thing that stands out with college basketball are the variety of play styles that exist. After conducting an analysis on the six conferences who have produced the highest number of draft picks from 2009-2021, one thing stands out. Each conference measures very similarly in every statistic measured. While some conferences such as the BIG10 and the SEC rely more on the three-point shot than others, and some such as the ACC feature a high block and steal per game rate, the differences are very slim. This is intriguing. This analysis which intended to highlight differences between conferences actually shows how similar these highly productive (in terms of getting players drafted) conferences are, and may show that the way each conference plays is similar to the way the game of basketball is played in the NBA.
